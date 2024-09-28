@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/hchichi/backtrace v0.0.0-20240624051018-30a50859e1b5 h1:TUM6XzOB7Z7OxyXi3fwlZY9KfuVbvUBusYiNbSfX208=
-github.com/hchichi/backtrace v0.0.0-20240624051018-30a50859e1b5/go.mod h1:e9Jt4tf2sbemCtc84/XgKcHy9EZ2jkc5x2sW1NiJS+E=
+github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5 h1:TUM6XzOB7Z7OxyXi3fwlZY9KfuVbvUBusYiNbSfX208=
+github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5/go.mod h1:e9Jt4tf2sbemCtc84/XgKcHy9EZ2jkc5x2sW1NiJS+E=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
