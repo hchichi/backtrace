@@ -24,19 +24,18 @@ jobs:
       
     - name: Build and Test on Default Platform
       run: |
+        go mod tidy
         go build -v ./...
         go test -v ./...
-    
-    - name: Delete Existing Release Assets
+      
+    - name: Delete existing release assets
       run: |
-        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/hchichi/backtrace/releases/tags/output" | jq -r '.id')
-        echo "Deleting existing release assets..."
-        assets=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/hchichi/backtrace/releases/$release_id/assets" | jq -r '.[] | .id')
-        for asset in $assets; do
-          echo "Deleting asset with ID: $asset"
-          curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/hchichi/backtrace/releases/assets/$asset"
-        done
-        sleep 60
+        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                     "https://api.github.com/repos/${{ github.repository }}/releases/tags/output" | jq -r '.id')
+        if [ "$release_id" = "null" ]; then
+          echo "No release found with tag 'output'. Skipping asset deletion."
+          exit 0
+        fi
 
   release-binary:
     name: Release Go Binary
