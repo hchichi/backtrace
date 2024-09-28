@@ -37,24 +37,30 @@ var (
 		"AS58807": "移动CMIN2  [精品线路]",
 		"AS9808":  "移动CMI    [普通线路]",
 		"AS58453": "移动CMI    [普通线路]",
-		"AS23764": "电信CTG    [优质线路]", // 添加 CTG 的映射
+		"AS23764": "电信CTG    [精品线路]",
+	}
+	asn23764Prefixes = [][]string{
+		{"102.217.164.", "102.217.166.", "121.59.100.", "121.59.106.", "121.59.109.", "121.59.120.", "121.59.122.", "121.59.124.", "121.59.140.", "121.59.144.", "121.59.153.", "147.78.133.", "147.78.135.", "154.198.1.", "154.198.2.", "183.91.51."},
+		{"202.55.17.", "202.55.2.", "203.12.200.", "203.128.224.", "203.128.229.", "203.14.188.", "203.19.32.", "203.19.37.", "203.19.38.", "203.196.12.", "203.196.15.", "203.196.8.", "203.20.136.", "203.25.50.", "203.33.10.", "203.33.8."},
+		{"203.34.194.", "203.34.196.", "203.34.199.", "203.80.136.", "203.81.0.", "203.81.6.", "203.82.18.", "203.86.101.", "203.86.126.", "218.185.241.", "5.154.128.", "5.154.144.", "5.154.154.", "5.154.156.", "63.140.14.", "63.140.9."},
+		{"69.194.163.", "69.194.165.", "69.194.166.", "69.194.171.", "69.194.172.", "69.194.175.", "79.139.10.", "79.139.4.", "79.139.6.", "79.139.8.", "95.130.192.", "95.130.194.", "95.130.199."},
 	}
 )
 
+// 移除重复元素的函数
 func removeDuplicates(elements []string) []string {
 	encountered := map[string]bool{} // 用于存储已经遇到的元素
 	result := []string{}             // 存储去重后的结果
-	for v := range elements {        // 遍历切片中的元素
-		if encountered[elements[v]] == true { // 如果该元素已经遇到过
-			// 存在过就不加入了
-		} else {
-			encountered[elements[v]] = true      // 将该元素标记为已经遇到
-			result = append(result, elements[v]) // 将该元素加入到结果切片中
+	for _, element := range elements { // 遍历切片中的元素
+		if !encountered[element] {    // 如果该元素尚未遇到
+			encountered[element] = true  // 将该元素标记为已经遇到
+			result = append(result, element) // 将该元素加入到结果切片中
 		}
 	}
 	return result // 返回去重后的结果切片
 }
 
+// 检查切片中是否包含某个元素的函数
 func contains(slice []string, item string) bool {
 	for _, v := range slice {
 		if v == item {
@@ -64,6 +70,7 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+// 主跟踪函数
 func trace(ch chan Result, i int) {
 	hops, err := Trace(net.ParseIP(ips[i]))
 	if err != nil {
@@ -80,7 +87,7 @@ func trace(ch chan Result, i int) {
 			}
 		}
 	}
-	// 处理CN2不同路线的区别
+
 	if asns != nil && len(asns) > 0 {
 		var tempText string
 		asns = removeDuplicates(asns)
@@ -88,31 +95,38 @@ func trace(ch chan Result, i int) {
 		hasAS4134 := contains(asns, "AS4134")
 		hasAS4809 := contains(asns, "AS4809")
 		hasAS23764 := contains(asns, "AS23764")
-		// 判断是否包含 AS4134 和 AS4809
-		if hasAS4134 && hasAS4809 {
-			// 同时包含 AS4134 和 AS4809 属于 CN2GT
+
+		// 优先检查 CTG
+		if hasAS23764 {
+			asns = append([]string{"AS23764"}, asns...)
+		} else if hasAS4134 && hasAS4809 {
 			asns = append([]string{"AS4809b"}, asns...)
 		} else if hasAS4809 {
-			// 仅包含 AS4809 属于 CN2GIA
 			asns = append([]string{"AS4809a"}, asns...)
 		}
-		if hasAS23764 {
-			// 包含 AS23764，表示经过了 CTG 网络
-			asns = append([]string{"AS23764"}, asns...)
-		}
+
 		tempText += fmt.Sprintf("%-15s ", ips[i])
 		for _, asn := range asns {
-			asnDescription := m[asn]
+			asnDescription, exists := m[asn]
+			if !exists {
+				continue
+			}
 			switch asn {
-			case "":
+			case "", "AS4809": // 被 AS4809a 和 AS4809b 替代了
 				continue
-			case "AS4809": // 被 AS4809a 和 AS4809b 替代了
-				continue
-			case "AS9929", "AS4809a", "AS23764":
+			case "AS9929":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += DarkGreen(asnDescription) + " "
+					tempText += Red(asnDescription) + " "
 				}
-			case "AS4809b", "AS58807":
+			case "AS58807":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += Blue(asnDescription) + " "
+				}
+			case "AS4809a", "AS23764":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += Yellow(asnDescription) + " "
+				}
+			case "AS4809b":
 				if !strings.Contains(tempText, asnDescription) {
 					tempText += Green(asnDescription) + " "
 				}
@@ -132,6 +146,19 @@ func trace(ch chan Result, i int) {
 	}
 }
 
+// hasAnyPrefix checks if the IP starts with any prefix in the given slice of slices
+func hasAnyPrefix(ip string, prefixSlices [][]string) bool {
+	for _, prefixes := range prefixSlices {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(ip, prefix) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ipAsn function
 func ipAsn(ip string) string {
 	switch {
 	case strings.HasPrefix(ip, "59.43"):
@@ -148,8 +175,7 @@ func ipAsn(ip string) string {
 		return "AS58807"
 	case strings.HasPrefix(ip, "223.118"), strings.HasPrefix(ip, "223.119"), strings.HasPrefix(ip, "223.120"), strings.HasPrefix(ip, "223.121"):
 		return "AS58453"
-	// 添加对 CTG 的判断
-	case strings.HasPrefix(ip, "61.164"), strings.HasPrefix(ip, "223.119"):
+	case hasAnyPrefix(ip, asn23764Prefixes):
 		return "AS23764"
 	default:
 		return ""
