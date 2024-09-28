@@ -5,7 +5,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/fatih/color"
 	. "github.com/oneclickvirt/defaultset"
 )
 
@@ -41,27 +40,6 @@ var (
 		"AS23764": "电信CTG    [优质线路]", // 添加 CTG 的映射
 	}
 )
-
-// 定义颜色函数
-func Gold(s string) string {
-	return color.New(color.FgHiYellow).Add(color.Bold).Sprint(s)
-}
-
-func Green(s string) string {
-	return color.New(color.FgHiGreen).Add(color.Bold).Sprint(s)
-}
-
-func DarkGreen(s string) string {
-	return color.New(color.FgGreen).Add(color.Bold).Sprint(s)
-}
-
-func White(s string) string {
-	return color.New(color.FgWhite).Add(color.Bold).Sprint(s)
-}
-
-func Red(s string) string {
-	return color.New(color.FgRed).Add(color.Bold).Sprint(s)
-}
 
 func removeDuplicates(elements []string) []string {
 	encountered := map[string]bool{} // 用于存储已经遇到的元素
@@ -130,11 +108,7 @@ func trace(ch chan Result, i int) {
 				continue
 			case "AS4809": // 被 AS4809a 和 AS4809b 替代了
 				continue
-			case "AS4809a", "AS23764":
-				if !strings.Contains(tempText, asnDescription) {
-					tempText += Gold(asnDescription) + " "
-				}
-			case "AS9929":
+			case "AS9929", "AS4809a", "AS23764":
 				if !strings.Contains(tempText, asnDescription) {
 					tempText += DarkGreen(asnDescription) + " "
 				}
