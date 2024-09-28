@@ -36,6 +36,7 @@ jobs:
           echo "No release found with tag 'output'. Skipping asset deletion."
           exit 0
         fi
+        # 继续执行删除资产的代码...
 
   release-binary:
     name: Release Go Binary
@@ -69,17 +70,6 @@ jobs:
             "https://uploads.github.com/repos/hchichi/backtrace/releases/$release_id/assets?name=$(basename "$file")"
           rm -rf $file
         done
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
 
     strategy:
       matrix:
