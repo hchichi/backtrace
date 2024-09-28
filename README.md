@@ -1,6 +1,6 @@
 # backtrace
 
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fbacktrace&count_bg=%2323E01C&title_bg=%23555555&icon=sonarcloud.svg&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![Build and Release](https://github.com/oneclickvirt/backtrace/actions/workflows/main.yaml/badge.svg)](https://github.com/oneclickvirt/backtrace/actions/workflows/main.yaml)
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fhchichi%2Fbacktrace&count_bg=%2323E01C&title_bg=%23555555&icon=sonarcloud.svg&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![Build and Release](https://github.com/hchichi/backtrace/actions/workflows/main.yaml/badge.svg)](https://github.com/hchichi/backtrace/actions/workflows/main.yaml)
 
 三网回程路由线路测试
 
@@ -29,13 +29,13 @@
 下载、安装、更新
 
 ```shell
-curl https://raw.githubusercontent.com/oneclickvirt/backtrace/main/backtrace_install.sh -sSf | bash
+curl https://raw.githubusercontent.com/hchichi/backtrace/main/backtrace_install.sh -sSf | bash
 ```
 
 或
 
 ```
-curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/oneclickvirt/backtrace/main/backtrace_install.sh -sSf | bash
+curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/hchichi/backtrace/main/backtrace_install.sh -sSf | bash
 ```
 
 使用
@@ -52,7 +52,7 @@ backtrace
 
 进行测试
 
-无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/oneclickvirt/backtrace/releases/tag/output
+无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/hchichi/backtrace/releases/tag/output
 
 ```
 Usage: backtrace [options]
@@ -72,13 +72,13 @@ rm -rf /usr/bin/backtrace
 ## 在Golang中使用
 
 ```
-go get github.com/oneclickvirt/backtrace@latest
+go get github.com/hchichi/backtrace@latest
 ```
 
 ## 概览图
 
-![图片](https://github.com/oneclickvirt/backtrace/assets/103393591/4688f99f-0f02-486f-8ffc-78d30f2c2f95)
+![图片](https://github.com/hchichi/backtrace/assets/103393591/4688f99f-0f02-486f-8ffc-78d30f2c2f95)
 
-![图片](https://github.com/oneclickvirt/backtrace/assets/103393591/2812a47d-4e6b-4091-9bb9-596af6c3c8bc)
+![图片](https://github.com/hchichi/backtrace/assets/103393591/2812a47d-4e6b-4091-9bb9-596af6c3c8bc)
 
-![图片](https://github.com/oneclickvirt/backtrace/assets/103393591/2e5cc625-e0da-41ff-85ff-9d21c01114a3)
+![图片](https://github.com/hchichi/backtrace/assets/103393591/2e5cc625-e0da-41ff-85ff-9d21c01114a3)
