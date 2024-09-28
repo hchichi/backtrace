@@ -24,9 +24,24 @@ jobs:
       
     - name: Build and Test on Default Platform
       run: |
-        go mod tidy
         go build -v ./...
         go test -v ./...
+    
+    - name: Check and Delete Existing Release Assets
+      run: |
+        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/hchichi/backtrace/releases/tags/output" | jq -r '.id')
+        if [ "$release_id" != "null" ]; then
+          echo "Deleting existing release assets..."
+          assets=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/hchichi/backtrace/releases/$release_id/assets" | jq -r '.[] | .id')
+          for asset in $assets; do
+            echo "Deleting asset with ID: $asset"
+            curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/hchichi/backtrace/releases/assets/$asset"
+          done
+        else
+          echo "No existing release found with tag 'output'. Creating a new release..."
+          curl -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -d '{"tag_name": "output", "name": "Latest Build", "body": "Automated release for latest build", "draft": false, "prerelease": false}' "https://api.github.com/repos/hchichi/backtrace/releases"
+        fi
+        sleep 60
 
   release-binary:
     name: Release Go Binary
@@ -41,38 +56,23 @@ jobs:
       with:
         go-version: 'stable'
 
-    - name: Create or Update Release
-      id: create_release
-      run: |
-        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                     "https://api.github.com/repos/${{ github.repository }}/releases/tags/output" | jq -r '.id')
-        if [ "$release_id" = "null" ]; then
-          echo "Creating new release..."
-          response=$(curl -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                     -H "Content-Type: application/json" \
-                     -d '{"tag_name": "0.0.4", "name": "Release 0.0.4", "body": "Initial release", "draft": false, "prerelease": false}' \
-                     "https://api.github.com/repos/${{ github.repository }}/releases")
-          release_id=$(echo "$response" | jq -r '.id')
-        else
-          echo "Release already exists. Updating assets..."
-        fi
-        echo "RELEASE_ID=$release_id" >> $GITHUB_ENV
-
     - name: Build and Release
       run: |
         mkdir -p bin
-        go mod download
         cd cmd
         CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ../bin/backtrace-${{ matrix.goos }}-${{ matrix.goarch }} -v -ldflags="-extldflags=-static" .
 
     - name: Upload New Assets
       run: |
+        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/hchichi/backtrace/releases/tags/output" | jq -r '.id')
+        echo "Uploading new assets to release..."
         for file in ./bin/*; do
           echo "Uploading $file to release..."
-          curl -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @"$file" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}、、、、、、/assets?name=$(basename "$file")"
+            "https://uploads.github.com/repos/hchichi/backtrace/releases/$release_id/assets?name=$(basename "$file")"
+          rm -rf $file
         done
 
     strategy:
