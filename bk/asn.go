@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/fatih/color"
 	. "github.com/oneclickvirt/defaultset"
 )
 
@@ -37,8 +38,30 @@ var (
 		"AS58807": "移动CMIN2  [精品线路]",
 		"AS9808":  "移动CMI    [普通线路]",
 		"AS58453": "移动CMI    [普通线路]",
+		"AS23764": "电信CTG    [优质线路]", // 添加 CTG 的映射
 	}
 )
+
+// 定义颜色函数
+func Gold(s string) string {
+	return color.New(color.FgHiYellow).Add(color.Bold).Sprint(s)
+}
+
+func Green(s string) string {
+	return color.New(color.FgHiGreen).Add(color.Bold).Sprint(s)
+}
+
+func DarkGreen(s string) string {
+	return color.New(color.FgGreen).Add(color.Bold).Sprint(s)
+}
+
+func White(s string) string {
+	return color.New(color.FgWhite).Add(color.Bold).Sprint(s)
+}
+
+func Red(s string) string {
+	return color.New(color.FgRed).Add(color.Bold).Sprint(s)
+}
 
 func removeDuplicates(elements []string) []string {
 	encountered := map[string]bool{} // 用于存储已经遇到的元素
@@ -52,6 +75,15 @@ func removeDuplicates(elements []string) []string {
 		}
 	}
 	return result // 返回去重后的结果切片
+}
+
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }
 
 func trace(ch chan Result, i int) {
@@ -75,16 +107,9 @@ func trace(ch chan Result, i int) {
 		var tempText string
 		asns = removeDuplicates(asns)
 		tempText += fmt.Sprintf("%v ", names[i])
-		hasAS4134 := false
-		hasAS4809 := false
-		for _, asn := range asns {
-			if asn == "AS4134" {
-				hasAS4134 = true
-			}
-			if asn == "AS4809" {
-				hasAS4809 = true
-			}
-		}
+		hasAS4134 := contains(asns, "AS4134")
+		hasAS4809 := contains(asns, "AS4809")
+		hasAS23764 := contains(asns, "AS23764")
 		// 判断是否包含 AS4134 和 AS4809
 		if hasAS4134 && hasAS4809 {
 			// 同时包含 AS4134 和 AS4809 属于 CN2GT
@@ -92,6 +117,10 @@ func trace(ch chan Result, i int) {
 		} else if hasAS4809 {
 			// 仅包含 AS4809 属于 CN2GIA
 			asns = append([]string{"AS4809a"}, asns...)
+		}
+		if hasAS23764 {
+			// 包含 AS23764，表示经过了 CTG 网络
+			asns = append([]string{"AS23764"}, asns...)
 		}
 		tempText += fmt.Sprintf("%-15s ", ips[i])
 		for _, asn := range asns {
@@ -101,19 +130,15 @@ func trace(ch chan Result, i int) {
 				continue
 			case "AS4809": // 被 AS4809a 和 AS4809b 替代了
 				continue
+			case "AS4809a", "AS23764":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += Gold(asnDescription) + " "
+				}
 			case "AS9929":
 				if !strings.Contains(tempText, asnDescription) {
 					tempText += DarkGreen(asnDescription) + " "
 				}
-			case "AS4809a":
-				if !strings.Contains(tempText, asnDescription) {
-					tempText += DarkGreen(asnDescription) + " "
-				}
-			case "AS4809b":
-				if !strings.Contains(tempText, asnDescription) {
-					tempText += Green(asnDescription) + " "
-				}
-			case "AS58807":
+			case "AS4809b", "AS58807":
 				if !strings.Contains(tempText, asnDescription) {
 					tempText += Green(asnDescription) + " "
 				}
@@ -139,16 +164,19 @@ func ipAsn(ip string) string {
 		return "AS4809"
 	case strings.HasPrefix(ip, "202.97"):
 		return "AS4134"
-	case strings.HasPrefix(ip, "218.105") || strings.HasPrefix(ip, "210.51"):
+	case strings.HasPrefix(ip, "218.105"), strings.HasPrefix(ip, "210.51"):
 		return "AS9929"
 	case strings.HasPrefix(ip, "219.158"):
 		return "AS4837"
-	case strings.HasPrefix(ip, "223.120.19") || strings.HasPrefix(ip, "223.120.17") || strings.HasPrefix(ip, "223.120.16") ||
-		strings.HasPrefix(ip, "223.120.140") || strings.HasPrefix(ip, "223.120.130") || strings.HasPrefix(ip, "223.120.131") ||
+	case strings.HasPrefix(ip, "223.120.19"), strings.HasPrefix(ip, "223.120.17"), strings.HasPrefix(ip, "223.120.16"),
+		strings.HasPrefix(ip, "223.120.140"), strings.HasPrefix(ip, "223.120.130"), strings.HasPrefix(ip, "223.120.131"),
 		strings.HasPrefix(ip, "223.120.141"):
 		return "AS58807"
-	case strings.HasPrefix(ip, "223.118") || strings.HasPrefix(ip, "223.119") || strings.HasPrefix(ip, "223.120") || strings.HasPrefix(ip, "223.121"):
+	case strings.HasPrefix(ip, "223.118"), strings.HasPrefix(ip, "223.119"), strings.HasPrefix(ip, "223.120"), strings.HasPrefix(ip, "223.121"):
 		return "AS58453"
+	// 添加对 CTG 的判断
+	case strings.HasPrefix(ip, "61.164"), strings.HasPrefix(ip, "223.119"):
+		return "AS23764"
 	default:
 		return ""
 	}
