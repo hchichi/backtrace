@@ -24,7 +24,7 @@ func main() {
 	go func() {
 		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fbacktrace&count_bg=%2323E01C&title_bg=%23555555&icon=sonarcloud.svg&icon_color=%23E7E7E7&title=hits&edge_flat=false")
 	}()
-	fmt.Println(Purple("项目地址:"), Cyan("https://github.com/hchichi/backtrace"))
+	fmt.Println(HiThistle("项目地址:"), HiMediumSeaGreen("https://github.com/hchichi/backtrace"))
 	var showVersion, showIpInfo, help bool
 	backtraceFlag := flag.NewFlagSet("backtrace", flag.ContinueOnError)
 	backtraceFlag.BoolVar(&help, "h", false, "Show help information")
@@ -57,8 +57,8 @@ func main() {
 		}
 	}
 	backtrace.BackTrace()
-	fmt.Println(Yellow("准确线路自行查看详细路由，本测试结果仅作参考"))
-	fmt.Println(Yellow("同一目标地址多个线路时，可能检测已越过汇聚层，除了第一个线路外，后续信息可能无效"))
+	fmt.Println(HiFireBrick("准确线路自行查看详细路由，本测试结果仅作参考"))
+	fmt.Println(HiFireBrick("同一目标地址多个线路时，可能检测已越过汇聚层，除了第一个线路外，后续信息可能无效"))
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		fmt.Println("Press Enter to exit...")
 		fmt.Scanln()

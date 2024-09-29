@@ -116,23 +116,23 @@ func trace(ch chan Result, i int) {
 				continue
 			case "AS9929":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += Red(asnDescription) + " "
+					tempText += HiIndianRed(asnDescription) + " "
 				}
 			case "AS58807":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += Blue(asnDescription) + " "
+					tempText += HiLightBlue(asnDescription) + " "
 				}
 			case "AS4809a", "AS23764":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += Yellow(asnDescription) + " "
+					tempText += HiGoldenrod(asnDescription) + " "
 				}
 			case "AS4809b":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += Green(asnDescription) + " "
+					tempText += HiDarkOrange(asnDescription) + " "
 				}
 			default:
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += White(asnDescription) + " "
+					tempText += HiSlateGray(asnDescription) + " "
 				}
 			}
 		}
