@@ -10,7 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	backtrace "github.com/hchichi/backtrace/bk"
-	. "github.com/oneclickvirt/defaultset"
+	//. "github.com/oneclickvirt/defaultset"
 )
 
 type IpInfo struct {

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	. "github.com/oneclickvirt/defaultset"
+	//. "github.com/oneclickvirt/defaultset"
 )
 
 type Result struct {
