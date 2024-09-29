@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/fatih/color"
 	. "github.com/oneclickvirt/defaultset"
 )
 
@@ -116,32 +117,32 @@ func trace(ch chan Result, i int) {
 				continue
 			case "AS9929":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += HiIndianRed(asnDescription) + " "
+					tempText += color.New(color.FgHiRed, color.Bold).Sprint(asnDescription) + " "
 				}
 			case "AS58807":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += HiLightBlue(asnDescription) + " "
+					tempText += color.New(color.FgHiBlue, color.Bold).Sprint(asnDescription) + " "
 				}
 			case "AS4809a", "AS23764":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += HiGoldenrod(asnDescription) + " "
+					tempText += color.New(color.FgHiYellow, color.Bold).Sprint(asnDescription) + " "
 				}
 			case "AS4809b":
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += HiDarkOrange(asnDescription) + " "
+					tempText += color.New(color.FgRed, color.Bold).Sprint(asnDescription) + " "
 				}
 			default:
 				if !strings.Contains(tempText, asnDescription) {
-					tempText += HiSlateGray(asnDescription) + " "
+					tempText += color.New(color.FgHiWhite, color.Bold).Sprint(asnDescription) + " "
 				}
 			}
 		}
 		if tempText == (fmt.Sprintf("%v ", names[i]) + fmt.Sprintf("%-15s ", ips[i])) {
-			tempText += fmt.Sprintf("%v", Red("检测不到已知线路的ASN"))
+			tempText += color.New(color.FgRed, color.Bold).Sprint("检测不到已知线路的ASN")
 		}
 		ch <- Result{i, tempText}
 	} else {
-		s := fmt.Sprintf("%v %-15s %v", names[i], ips[i], Red("检测不到回程路由节点的IP地址"))
+		s := fmt.Sprintf("%v %-15s %v", names[i], ips[i], color.New(color.FgRed, color.Bold).Sprint("检测不到回程路由节点的IP地址"))
 		ch <- Result{i, s}
 	}
 }
