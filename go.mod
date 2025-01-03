@@ -6,7 +6,9 @@ toolchain go1.23.1
 
 require (
 	github.com/fatih/color v1.17.0
+	github.com/gorilla/websocket v1.5.1
 	github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5
+	github.com/tidwall/gjson v1.17.0
 	golang.org/x/net v0.26.0
 	golang.org/x/sys v0.21.0
 )
@@ -14,6 +16,8 @@ require (
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 )
