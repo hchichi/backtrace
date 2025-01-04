@@ -50,11 +50,12 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/backtrace-linux-amd64 main.go
-          GOOS=linux GOARCH=arm64 go build -o dist/backtrace-linux-arm64 main.go
-          GOOS=darwin GOARCH=amd64 go build -o dist/backtrace-darwin-amd64 main.go
-          GOOS=darwin GOARCH=arm64 go build -o dist/backtrace-darwin-arm64 main.go
-          GOOS=windows GOARCH=amd64 go build -o dist/backtrace-windows-amd64.exe main.go
+          GOOS=linux GOARCH=amd64 go build -o dist/backtrace-linux-amd64 ./cmd/main.go
+          GOOS=linux GOARCH=arm64 go build -o dist/backtrace-linux-arm64 ./cmd/main.go
+          GOOS=darwin GOARCH=amd64 go build -o dist/backtrace-darwin-amd64 ./cmd/main.go
+          GOOS=darwin GOARCH=arm64 go build -o dist/backtrace-darwin-arm64 ./cmd/main.go
+          GOOS=windows GOARCH=amd64 go build -o dist/backtrace-windows-amd64.exe ./cmd/main.go
+        shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
         run: |
