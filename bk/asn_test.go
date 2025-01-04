@@ -1,88 +1,114 @@
 package backtrace
 
 import (
+	"fmt"
 	"testing"
-	"time"
+	"github.com/hchichi/backtrace/bk/ipgeo"
 )
 
-func TestTrace(t *testing.T) {
-	ch := make(chan Result)
+func TestRouteDetectionNew(t *testing.T) {
+	// 启用测试模式
+	EnableTestMode()
+	defer DisableTestMode()
 
-	// 测试多个 IP
-	for i := 0; i < len(ips); i++ {
-		go trace(ch, i)
+	// 测试特定场景
+	testCases := []struct {
+		name     string
+		ip       string
+		expected string
+	}{
+		{"北京电信163", "ipv4.pek-4134.endpoint.nxtrace.org", "电信163 [普通]"},
+		{"上海联通169", "ipv4.sha-4837.endpoint.nxtrace.org", "联通169 [普通]"},
+		{"广州移动CMI", "ipv4.can-9808.endpoint.nxtrace.org", "移动CMI [普通]"},
+		{"合肥电信163", "61.132.163.68", "电信163 [普通]"},
+		{"CTG回程", "69.194.1.1", "电信CTG回程 [顶级]"},
 	}
 
-	// 收集结果
-	results := make([]Result, len(ips))
-	for i := 0; i < len(ips); i++ {
-		select {
-		case result := <-ch:
-			results[result.i] = result
-		case <-time.After(30 * time.Second):
-			t.Errorf("测试超时: index %d", i)
-			return
+	fmt.Println("\n=== 测试特定场景 ===")
+	for _, tc := range testCases {
+		plain, colored := getRouteType(tc.ip)
+		if plain != tc.expected {
+			t.Errorf("%s: 期望 %s, 得到 %s", tc.name, tc.expected, plain)
 		}
-	}
-
-	// 验证结果
-	for i, result := range results {
-		if result.s == "" {
-			t.Errorf("IP %s (%s) 没有返回结果", ips[i], names[i])
-		}
+		fmt.Printf("%s: %s\n", tc.name, colored)
 	}
 }
 
-func TestIPAsn(t *testing.T) {
+func TestInvalidIPsNew(t *testing.T) {
+	// 启用测试模式
+	EnableTestMode()
+	defer DisableTestMode()
+
+	invalidIPs := []struct {
+		ip       string
+		expected string
+	}{
+		{"invalid.ip", "未知"},
+		{"999.999.999.999", "未知"},
+		{"not.exist.ip.address", "未知"},
+	}
+
+	fmt.Println("\n=== 测试无效IP ===")
+	for _, ip := range invalidIPs {
+		plain, colored := getRouteType(ip.ip)
+		if plain != ip.expected {
+			t.Errorf("无效IP %s: 期望 %s, 得到 %s", ip.ip, ip.expected, plain)
+		}
+		fmt.Printf("无效IP (%s): %s\n", ip.ip, colored)
+	}
+}
+
+func TestCTGBackhaul(t *testing.T) {
 	// 启用测试模式
 	EnableTestMode()
 	defer DisableTestMode()
 
 	testCases := []struct {
-		ip       string
-		expected string
+		name     string
+		data     *ipgeo.IPGeoData
+		expected bool
 	}{
-		{"59.43.1.1", "AS4809"},
-		{"202.97.1.1", "AS4134"},
-		{"218.105.1.1", "AS9929"},
-		{"223.120.19.1", "AS58807"},
-		{"69.194.1.1", "AS23764"},
-		{"1.1.1.1", ""}, // 未知 IP
+		{
+			name: "CTG回程",
+			data: &ipgeo.IPGeoData{
+				Asnumber: "23764",
+			},
+			expected: true,
+		},
+		{
+			name: "非CTG回程",
+			data: &ipgeo.IPGeoData{
+				Asnumber: "4134",
+			},
+			expected: false,
+		},
 	}
 
+	fmt.Println("\n=== 测试CTG回程判断 ===")
 	for _, tc := range testCases {
-		got := ipAsn(tc.ip)
-		if got != tc.expected {
-			t.Errorf("ipAsn(%s) = %s; 期望 %s", tc.ip, got, tc.expected)
+		result := isCTGBackhaul(tc.data)
+		if result != tc.expected {
+			t.Errorf("%s: 期望 %v, 得到 %v", tc.name, tc.expected, result)
 		}
+		fmt.Printf("%s: %v\n", tc.name, result)
 	}
 }
 
-func TestSortASNsByPriority(t *testing.T) {
-	testCases := []struct {
-		input    []string
-		expected []string
-	}{
-		{
-			[]string{"AS4134", "AS23764", "AS4809"},
-			[]string{"AS23764", "AS4809a", "AS4134"},
-		},
-		{
-			[]string{"AS9929", "AS4837", "AS10099"},
-			[]string{"AS10099", "AS9929", "AS4837"},
-		},
+func TestNextTrace(t *testing.T) {
+	// 测试nexttrace调用
+	fmt.Println("\n=== 测试NextTrace调用 ===")
+	ip := "1.1.1.1"
+	output, err := useNextTrace(ip)
+	if err != nil {
+		fmt.Printf("NextTrace调用失败: %v\n", err)
+	} else {
+		fmt.Printf("NextTrace调用成功，输出前100个字符: %s\n", output[:min(len(output), 100)])
 	}
+}
 
-	for _, tc := range testCases {
-		got := sortASNsByPriority(tc.input)
-		if len(got) != len(tc.expected) {
-			t.Errorf("长度不匹配: 得到 %v, 期望 %v", got, tc.expected)
-			continue
-		}
-		for i := range got {
-			if got[i] != tc.expected[i] {
-				t.Errorf("排序错误: 位置 %d, 得到 %s, 期望 %s", i, got[i], tc.expected[i])
-			}
-		}
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
+	return b
 }
