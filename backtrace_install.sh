@@ -1,75 +1,50 @@
 #!/bin/bash
-#From https://github.com/ilychi/backtrace
-#2025.01.05
+# From https://github.com/ilychi/backtrace
+# 2025.01.05
 
+set -e
+
+# 清理旧版本
 rm -rf /usr/bin/backtrace
-os=$(uname -s)
+
+# 获取系统信息
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m)
 
-check_cdn() {
-  local o_url=$1
-  for cdn_url in "${cdn_urls[@]}"; do
-    if curl -sL -k "$cdn_url$o_url" --max-time 6 | grep -q "success" >/dev/null 2>&1; then
-      export cdn_success_url="$cdn_url"
-      return
-    fi
-    sleep 0.5
-  done
-  export cdn_success_url=""
-}
-
-check_cdn_file() {
-  check_cdn "https://raw.githubusercontent.com/spiritLHLS/ecs/main/back/test"
-  if [ -n "$cdn_success_url" ]; then
-    echo "CDN available, using CDN"
-  else
-    echo "No CDN available, no use CDN"
-  fi
-}
-
-cdn_urls=("https://cdn0.spiritlhl.top/" "http://cdn3.spiritlhl.net/" "http://cdn1.spiritlhl.net/" "http://cdn2.spiritlhl.net/")
-check_cdn_file
-
-# 下载最新版本
+# 获取最新版本
 REPO="ilychi/backtrace"
 LATEST_VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 [ -z "$LATEST_VERSION" ] && LATEST_VERSION="latest"
 
-case $os in
-  Linux)
-    case $arch in
-      "x86_64" | "x86" | "amd64" | "x64")
-        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-linux-amd64"
-        ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-linux-arm64"
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
+# 映射架构名称
+case $arch in
+  "x86_64" | "amd64")
+    arch="amd64"
     ;;
-  Darwin)
-    case $arch in
-      "x86_64" | "x86" | "amd64" | "x64")
-        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-darwin-amd64"
-        ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-darwin-arm64"
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
+  "aarch64" | "arm64")
+    arch="arm64"
     ;;
   *)
-    echo "Unsupported operating system: $os"
+    echo "不支持的架构: $arch"
     exit 1
     ;;
 esac
 
+# 下载对应版本
+DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-${os}-${arch}"
+if [ "$os" = "windows" ]; then
+    DOWNLOAD_URL="${DOWNLOAD_URL}.exe"
+fi
+
+echo "正在下载 backtrace..."
+echo "下载地址: $DOWNLOAD_URL"
+curl -L "$DOWNLOAD_URL" -o backtrace
+
+# 设置权限并安装
 chmod +x backtrace
 mv backtrace /usr/bin/
-echo "Installation completed!"
+
+echo "backtrace 已成功安装！"
+echo "版本: $LATEST_VERSION"
+echo "系统: $os"
+echo "架构: $arch"
