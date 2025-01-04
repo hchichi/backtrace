@@ -1,6 +1,6 @@
 #!/bin/bash
-#From https://github.com/hchichi/backtrace
-#2024.07.02
+#From https://github.com/ilychi/backtrace
+#2025.01.05
 
 rm -rf /usr/bin/backtrace
 os=$(uname -s)
@@ -30,17 +30,19 @@ check_cdn_file() {
 cdn_urls=("https://cdn0.spiritlhl.top/" "http://cdn3.spiritlhl.net/" "http://cdn1.spiritlhl.net/" "http://cdn2.spiritlhl.net/")
 check_cdn_file
 
+# 下载最新版本
+REPO="ilychi/backtrace"
+LATEST_VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+[ -z "$LATEST_VERSION" ] && LATEST_VERSION="latest"
+
 case $os in
   Linux)
     case $arch in
       "x86_64" | "x86" | "amd64" | "x64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-linux-amd64"
-        ;;
-      "i386" | "i686")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-linux-386"
+        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-linux-amd64"
         ;;
       "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-linux-arm64"
+        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-linux-arm64"
         ;;
       *)
         echo "Unsupported architecture: $arch"
@@ -51,47 +53,10 @@ case $os in
   Darwin)
     case $arch in
       "x86_64" | "x86" | "amd64" | "x64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-darwin-amd64"
-        ;;
-      "i386" | "i686")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-darwin-386"
+        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-darwin-amd64"
         ;;
       "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-darwin-arm64"
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
-    ;;
-  FreeBSD)
-    case $arch in
-      amd64)
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-freebsd-amd64"
-        ;;
-      "i386" | "i686")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-freebsd-386"
-        ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-freebsd-arm64"
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
-    ;;
-  OpenBSD)
-    case $arch in
-      amd64)
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-openbsd-amd64"
-        ;;
-      "i386" | "i686")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-openbsd-386"
-        ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-        wget -O backtrace "${cdn_success_url}https://github.com/hchichi/backtrace/releases/download/output/backtrace-openbsd-arm64"
+        wget -O backtrace "${cdn_success_url}https://github.com/$REPO/releases/download/$LATEST_VERSION/backtrace-darwin-arm64"
         ;;
       *)
         echo "Unsupported architecture: $arch"
@@ -105,5 +70,6 @@ case $os in
     ;;
 esac
 
-chmod 777 backtrace
-cp backtrace /usr/bin/backtrace
+chmod +x backtrace
+mv backtrace /usr/bin/
+echo "Installation completed!"
