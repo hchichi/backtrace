@@ -13,12 +13,12 @@ jobs:
     name: Test and Tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
           
       - name: Run Tests
         run: go test ./... -coverprofile=coverage.txt
@@ -40,21 +40,26 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
+          
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod tidy
           
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/backtrace-linux-amd64 ./cmd/main.go
-          GOOS=linux GOARCH=arm64 go build -o dist/backtrace-linux-arm64 ./cmd/main.go
-          GOOS=darwin GOARCH=amd64 go build -o dist/backtrace-darwin-amd64 ./cmd/main.go
-          GOOS=darwin GOARCH=arm64 go build -o dist/backtrace-darwin-arm64 ./cmd/main.go
-          GOOS=windows GOARCH=amd64 go build -o dist/backtrace-windows-amd64.exe ./cmd/main.go
+          GOOS=linux GOARCH=amd64 go build -o dist/backtrace-linux-amd64
+          GOOS=linux GOARCH=arm64 go build -o dist/backtrace-linux-arm64
+          GOOS=darwin GOARCH=amd64 go build -o dist/backtrace-darwin-amd64
+          GOOS=darwin GOARCH=arm64 go build -o dist/backtrace-darwin-arm64
+          GOOS=windows GOARCH=amd64 go build -o dist/backtrace-windows-amd64.exe
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
