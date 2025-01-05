@@ -51,6 +51,7 @@ jobs:
         run: |
           cd ..
           git clone https://github.com/nxtrace/NTrace-core.git
+          cd backtrace
           
       - name: Download dependencies
         run: |
