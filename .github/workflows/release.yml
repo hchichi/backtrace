@@ -18,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
           
       - name: Run Tests
         run: go test ./... -coverprofile=coverage.txt
@@ -45,7 +45,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
+          
+      - name: Clone NTrace-core
+        run: |
+          cd ..
+          git clone https://github.com/nxtrace/NTrace-core.git
           
       - name: Download dependencies
         run: |
@@ -55,11 +60,12 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/backtrace-linux-amd64
-          GOOS=linux GOARCH=arm64 go build -o dist/backtrace-linux-arm64
-          GOOS=darwin GOARCH=amd64 go build -o dist/backtrace-darwin-amd64
-          GOOS=darwin GOARCH=arm64 go build -o dist/backtrace-darwin-arm64
-          GOOS=windows GOARCH=amd64 go build -o dist/backtrace-windows-amd64.exe
+          # 确保编译时包含所有依赖
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-linux-amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-linux-arm64
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-darwin-amd64
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-darwin-arm64
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
