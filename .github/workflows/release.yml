@@ -24,6 +24,18 @@ jobs:
           cache: true
           cache-dependency-path: backtrace/go.sum
           
+      - name: Clone NTrace-core
+        run: |
+          git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
+          cd backtrace
+          go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
+          
+      - name: Download dependencies
+        working-directory: backtrace
+        run: |
+          go mod download
+          go mod tidy
+          
       - name: Run Tests
         working-directory: backtrace
         run: go test ./... -coverprofile=coverage.txt
