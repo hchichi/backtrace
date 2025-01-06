@@ -14,8 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: backtrace
       
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -23,12 +21,10 @@ jobs:
           go-version: '1.21'
           
       - name: Run Tests
-        working-directory: backtrace
         run: go test ./... -coverprofile=coverage.txt
         
       - name: Create Auto Tag
         if: github.ref == 'refs/heads/main' && success()
-        working-directory: backtrace
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
@@ -44,9 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: backtrace
+      - name: Checkout backtrace
+        uses: actions/checkout@v4
       
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -55,28 +50,41 @@ jobs:
           
       - name: Clone NTrace-core
         run: |
-          git clone https://github.com/nxtrace/NTrace-core.git
+          mkdir -p $GITHUB_WORKSPACE/NTrace-core
+          git clone https://github.com/nxtrace/NTrace-core.git $GITHUB_WORKSPACE/NTrace-core
+          
+      - name: Setup workspace
+        run: |
+          echo "module github.com/oneclickvirt/backtrace" > go.mod
+          echo "" >> go.mod
+          echo "go 1.21" >> go.mod
+          echo "" >> go.mod
+          echo "require (" >> go.mod
+          echo '  github.com/nxtrace/NTrace-core v0.1.0' >> go.mod
+          echo '  github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5' >> go.mod
+          echo '  golang.org/x/net v0.33.0' >> go.mod
+          echo '  golang.org/x/sys v0.28.0' >> go.mod
+          echo ")" >> go.mod
+          echo "" >> go.mod
+          echo 'replace github.com/nxtrace/NTrace-core => ./NTrace-core' >> go.mod
           
       - name: Download dependencies
-        working-directory: backtrace
         run: |
           go mod download
           go mod tidy
           
       - name: Build
-        working-directory: backtrace
         run: |
           mkdir -p dist
           # 确保编译时包含所有依赖
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-linux-amd64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-linux-arm64
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-darwin-amd64
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-darwin-arm64
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags="-s -w" -o dist/backtrace-linux-amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -ldflags="-s -w" -o dist/backtrace-linux-arm64
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -v -ldflags="-s -w" -o dist/backtrace-darwin-amd64
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -v -ldflags="-s -w" -o dist/backtrace-darwin-arm64
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -v -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
-        working-directory: backtrace
         run: |
           cd dist
           sha256sum * > checksums.txt
@@ -86,7 +94,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: backtrace/dist/*
+          files: dist/*
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -97,7 +105,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          files: backtrace/dist/*
+          files: dist/*
           tag_name: latest
           name: Latest Build
           body: |
