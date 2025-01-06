@@ -14,35 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: backtrace
       
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           cache: true
-          cache-dependency-path: backtrace/go.sum
+          cache-dependency-path: go.sum
           
       - name: Clone NTrace-core
         run: |
+          cd ..
           git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
           cd backtrace
           go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
           
       - name: Download dependencies
-        working-directory: backtrace
         run: |
           go mod download
           go mod tidy
           
       - name: Run Tests
-        working-directory: backtrace
         run: go test ./... -coverprofile=coverage.txt
         
       - name: Create Auto Tag
         if: github.ref == 'refs/heads/main' && success()
-        working-directory: backtrace
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
@@ -63,30 +59,27 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: backtrace
       
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           cache: true
-          cache-dependency-path: backtrace/go.sum
+          cache-dependency-path: go.sum
           
       - name: Clone NTrace-core
         run: |
+          cd ..
           git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
           cd backtrace
           go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
           
       - name: Download dependencies
-        working-directory: backtrace
         run: |
           go mod download
           go mod tidy
           
       - name: Build
-        working-directory: backtrace
         run: |
           mkdir -p dist
           VERSION=${GITHUB_REF#refs/tags/}
@@ -105,7 +98,6 @@ jobs:
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
-        working-directory: backtrace
         run: |
           cd dist
           sha256sum * > checksums.txt
@@ -115,7 +107,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: backtrace/dist/*
+          files: dist/*
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -126,7 +118,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          files: backtrace/dist/*
+          files: dist/*
           tag_name: latest
           name: Latest Build
           body: |
