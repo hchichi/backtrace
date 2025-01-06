@@ -60,7 +60,8 @@ jobs:
       - name: Clone NTrace-core
         run: |
           git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
-          mv NTrace-core ../NTrace-core
+          cd backtrace
+          go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
           
       - name: Download dependencies
         working-directory: backtrace
