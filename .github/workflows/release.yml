@@ -21,6 +21,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache: true
+          cache-dependency-path: backtrace/go.sum
           
       - name: Run Tests
         working-directory: backtrace
@@ -52,10 +54,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache: true
+          cache-dependency-path: backtrace/go.sum
           
       - name: Clone NTrace-core
         run: |
-          git clone https://github.com/nxtrace/NTrace-core.git
+          git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
           mv NTrace-core ../NTrace-core
           
       - name: Download dependencies
@@ -68,12 +72,13 @@ jobs:
         working-directory: backtrace
         run: |
           mkdir -p dist
+          LDFLAGS="-s -w -X main.version=${GITHUB_REF#refs/tags/} -X main.buildTime=$(date -u '+%Y-%m-%d %H:%M:%S')"
           # 确保编译时包含所有依赖
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-linux-amd64 ./cmd/backtrace
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-linux-arm64 ./cmd/backtrace
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-darwin-amd64 ./cmd/backtrace
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-darwin-arm64 ./cmd/backtrace
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe ./cmd/backtrace
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-amd64 ./cmd/backtrace
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-arm64 ./cmd/backtrace
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-amd64 ./cmd/backtrace
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-arm64 ./cmd/backtrace
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-windows-amd64.exe ./cmd/backtrace
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
