@@ -62,11 +62,11 @@ jobs:
         run: |
           mkdir -p dist
           # 确保编译时包含所有依赖
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-linux-amd64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-linux-arm64
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-darwin-amd64
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-darwin-arm64
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-linux-amd64 ./main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-linux-arm64 ./main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-darwin-amd64 ./main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/backtrace-darwin-arm64 ./main.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/backtrace-windows-amd64.exe ./main.go
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
