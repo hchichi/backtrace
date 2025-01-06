@@ -34,9 +34,13 @@ jobs:
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-          TAG="v0.0.4-$(date +'%Y%m%d%H%M%S')"
-          git tag $TAG
-          git push origin $TAG
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          MAJOR=$(echo $LAST_TAG | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo $LAST_TAG | cut -d. -f2)
+          PATCH=$(echo $LAST_TAG | cut -d. -f3 | cut -d- -f1)
+          NEW_TAG="v$MAJOR.$MINOR.$((PATCH + 1))-$(date +'%Y%m%d%H%M%S')"
+          git tag $NEW_TAG
+          git push origin $NEW_TAG
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
@@ -73,13 +77,19 @@ jobs:
         working-directory: backtrace
         run: |
           mkdir -p dist
-          LDFLAGS="-s -w -X main.version=${GITHUB_REF#refs/tags/} -X main.buildTime=$(date -u '+%Y-%m-%d %H:%M:%S')"
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$VERSION" = "" ] || [ "$VERSION" = "refs/heads/main" ]; then
+            VERSION=$(git describe --tags --always)
+          fi
+          LDFLAGS="-s -w -X main.version=$VERSION -X main.buildTime=$(date -u '+%Y-%m-%d %H:%M:%S')"
           # 确保编译时包含所有依赖
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-amd64 ./cmd
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-arm64 ./cmd
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-amd64 ./cmd
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-arm64 ./cmd
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-windows-amd64.exe ./cmd
+          # 设置执行权限
+          chmod +x dist/backtrace-*
         shell: /usr/bin/bash -e {0}
           
       - name: Generate checksums
@@ -110,6 +120,7 @@ jobs:
           body: |
             Latest build from main branch
             Built on ${{ github.event.head_commit.timestamp }}
+            Version: ${{ github.sha }}
           draft: false
           prerelease: false
         env:

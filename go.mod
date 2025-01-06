@@ -1,8 +1,6 @@
 module github.com/oneclickvirt/backtrace
 
-go 1.22.10
-
-toolchain go1.23.3
+go 1.21
 
 require (
 	github.com/nxtrace/NTrace-core v0.1.0
