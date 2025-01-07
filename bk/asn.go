@@ -662,59 +662,20 @@ func useNextTrace(ip string) ([]net.IP, error) {
 	// 检查 NextTrace 是否安装
 	cmd := exec.Command("which", "nexttrace")
 	if err := cmd.Run(); err != nil {
-		// NextTrace 未安装，尝试自动安装
+		// NextTrace 未安装，尝试使用官方安装脚本
 		fmt.Println("NextTrace 未安装，正在尝试自动安装...")
-
-		// 检测操作系统
-		osCmd := exec.Command("uname", "-s")
-		osOutput, err := osCmd.Output()
-		if err != nil {
-			return nil, fmt.Errorf("无法检测操作系统: %v", err)
+		installCmd := exec.Command("bash", "-c", "curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh | bash")
+		if output, err := installCmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("安装 NextTrace 失败: %v\n%s", err, output)
 		}
-
-		os := strings.TrimSpace(string(osOutput))
-		var installCmd *exec.Cmd
-
-		switch os {
-		case "Darwin": // macOS
-			// 检查是否安装了 Homebrew
-			if err := exec.Command("which", "brew").Run(); err != nil {
-				return nil, fmt.Errorf("请先安装 Homebrew: https://brew.sh")
-			}
-			installCmd = exec.Command("brew", "install", "nexttrace")
-		case "Linux":
-			// 检查包管理器并安装
-			aptCmd := exec.Command("which", "apt")
-			if err := aptCmd.Run(); err == nil {
-				installCmd = exec.Command("sudo", "apt", "update")
-				installCmd.Run()
-				installCmd = exec.Command("sudo", "apt", "install", "-y", "nexttrace")
-			} else {
-				yumCmd := exec.Command("which", "yum")
-				if err := yumCmd.Run(); err == nil {
-					installCmd = exec.Command("sudo", "yum", "install", "-y", "nexttrace")
-				} else {
-					return nil, fmt.Errorf("未找到支持的包管理器，请手动安装 NextTrace")
-				}
-			}
-		default:
-			return nil, fmt.Errorf("不支持的操作系统: %s", os)
-		}
-
-		if installCmd != nil {
-			fmt.Println("正在安装 NextTrace...")
-			if output, err := installCmd.CombinedOutput(); err != nil {
-				return nil, fmt.Errorf("安装 NextTrace 失败: %v\n%s", err, output)
-			}
-			fmt.Println("NextTrace 安装成功！")
-		}
+		fmt.Println("NextTrace 安装成功！")
 	}
 
-	// 执行 NextTrace
-	cmd = exec.Command("nexttrace", "-q", "1", "-n", "1", "-M", "icmp", ip)
+	// 执行 NextTrace，使用更多参数以获得更好的结果
+	cmd = exec.Command("nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("执行 NextTrace 失败: %v", err)
 	}
 
 	// 解析输出
@@ -727,14 +688,20 @@ func useNextTrace(ip string) ([]net.IP, error) {
 		}
 	}
 
+	if len(hops) == 0 {
+		return nil, fmt.Errorf("NextTrace 未返回任何有效的跳点信息")
+	}
+
 	return hops, nil
 }
 
 func extractIP(line string) net.IP {
 	// 使用正则表达式匹配 IP 地址
 	re := regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
-	if match := re.FindString(line); match != "" {
-		return net.ParseIP(match)
+	matches := re.FindAllString(line, -1)
+	if len(matches) > 0 {
+		// 返回最后一个匹配的 IP 地址，因为通常是目标 IP
+		return net.ParseIP(matches[len(matches)-1])
 	}
 	return nil
 }
