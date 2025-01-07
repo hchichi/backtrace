@@ -68,3 +68,14 @@ esac
 chmod 777 backtrace
 mv backtrace /usr/bin/backtrace
 echo "Installation completed. You can now use 'backtrace' command."
+echo
+echo "Usage:"
+echo "  backtrace           - Run backtrace with default settings"
+echo "  backtrace -h       - Show help information"
+echo "  backtrace -v       - Show version information"
+echo "  backtrace -e       - Enable logging"
+echo "  backtrace -s=false - Disable IP information display"
+echo
+echo "Example:"
+echo "  backtrace          - Trace route to multiple destinations"
+echo "  backtrace -e       - Trace route with logging enabled"
