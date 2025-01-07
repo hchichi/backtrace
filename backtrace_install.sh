@@ -2,6 +2,22 @@
 #From https://github.com/ilychi/backtrace
 #2024.01.07
 
+# 安装 NextTrace
+install_nexttrace() {
+  echo "正在安装 NextTrace..."
+  bash <(curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh)
+  if ! command -v nexttrace &> /dev/null; then
+    echo "NextTrace 安装失败，请手动安装"
+    exit 1
+  fi
+  echo "NextTrace 安装成功"
+}
+
+# 检查 NextTrace 是否已安装
+if ! command -v nexttrace &> /dev/null; then
+  install_nexttrace
+fi
+
 rm -rf /usr/bin/backtrace
 os=$(uname -s)
 arch=$(uname -m)
