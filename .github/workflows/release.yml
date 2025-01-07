@@ -18,24 +18,46 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
           cache: true
           cache-dependency-path: go.sum
           
+      - name: Debug Info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Go version:"
+          go version
+          echo "Go env:"
+          go env
+          
       - name: Clone NTrace-core
         run: |
+          echo "Cloning NTrace-core..."
           cd ..
           git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
+          echo "NTrace-core directory contents:"
+          ls -la NTrace-core
           cd backtrace
           go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
+          echo "Updated go.mod contents:"
+          cat go.mod
           
       - name: Download dependencies
         run: |
+          echo "Downloading dependencies..."
           go mod download
           go mod tidy
+          echo "Final go.mod contents:"
+          cat go.mod
+          echo "Dependency tree:"
+          go list -m all
           
       - name: Run Tests
-        run: go test ./... -coverprofile=coverage.txt
+        run: |
+          echo "Running tests..."
+          go test -v ./... -coverprofile=coverage.txt
         
       - name: Create Auto Tag
         if: github.ref == 'refs/heads/main' && success()
@@ -47,6 +69,7 @@ jobs:
           MINOR=$(echo $LAST_TAG | cut -d. -f2)
           PATCH=$(echo $LAST_TAG | cut -d. -f3 | cut -d- -f1)
           NEW_TAG="v$MAJOR.$MINOR.$((PATCH + 1))-$(date +'%Y%m%d%H%M%S')"
+          echo "Creating new tag: $NEW_TAG"
           git tag $NEW_TAG
           git push origin $NEW_TAG
         env:
@@ -63,36 +86,79 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
           cache: true
           cache-dependency-path: go.sum
           
+      - name: Debug Info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Go version:"
+          go version
+          echo "Go env:"
+          go env
+          
       - name: Clone NTrace-core
         run: |
+          echo "Cloning NTrace-core..."
           cd ..
           git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
+          echo "NTrace-core directory contents:"
+          ls -la NTrace-core
           cd backtrace
           go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
+          echo "Updated go.mod contents:"
+          cat go.mod
           
       - name: Download dependencies
         run: |
+          echo "Downloading dependencies..."
           go mod download
           go mod tidy
+          echo "Final go.mod contents:"
+          cat go.mod
+          echo "Dependency tree:"
+          go list -m all
           
       - name: Build
         run: |
+          echo "Starting build process..."
           mkdir -p dist
           VERSION=${GITHUB_REF#refs/tags/}
           if [ "$VERSION" = "" ] || [ "$VERSION" = "refs/heads/main" ]; then
             VERSION=$(git describe --tags --always)
           fi
+          echo "Building version: $VERSION"
           LDFLAGS="-s -w -X main.version=$VERSION -X main.buildTime=$(date -u '+%Y-%m-%d %H:%M:%S')"
+          
           # 确保编译时包含所有依赖
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-amd64 .
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-linux-arm64 .
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-amd64 .
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/backtrace-darwin-arm64 .
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/backtrace-windows-amd64.exe .
+          for os in linux darwin windows; do
+            for arch in amd64 arm64; do
+              # 跳过 Windows ARM64
+              if [ "$os" = "windows" ] && [ "$arch" = "arm64" ]; then
+                continue
+              fi
+              
+              echo "Building for $os/$arch..."
+              export GOOS=$os
+              export GOARCH=$arch
+              export CGO_ENABLED=0
+              
+              if [ "$os" = "windows" ]; then
+                echo "go build -v -ldflags=\"$LDFLAGS\" -o \"dist/backtrace-${os}-${arch}.exe\""
+                go build -v -ldflags="$LDFLAGS" -o "dist/backtrace-${os}-${arch}.exe"
+              else
+                echo "go build -v -ldflags=\"$LDFLAGS\" -o \"dist/backtrace-${os}-${arch}\""
+                go build -v -ldflags="$LDFLAGS" -o "dist/backtrace-${os}-${arch}"
+              fi
+            done
+          done
+          
+          echo "Build outputs:"
+          ls -la dist/
+          
           # 设置执行权限
           chmod +x dist/backtrace-*
         shell: /usr/bin/bash -e {0}
@@ -101,6 +167,8 @@ jobs:
         run: |
           cd dist
           sha256sum * > checksums.txt
+          echo "Generated checksums:"
+          cat checksums.txt
           
       - name: Create Release
         id: create_release
