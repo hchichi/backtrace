@@ -59,22 +59,12 @@ case $os in
         ;;
     esac
     ;;
-  Windows)
-    case $arch in
-      "x86_64" | "x86" | "amd64" | "x64")
-        wget -O backtrace.exe "${cdn_success_url}https://github.com/ilychi/backtrace/releases/download/latest/backtrace-windows-amd64.exe"
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
-    ;;
   *)
-    echo "Unsupported operating system: $os"
+    echo "This script only supports Linux and macOS systems"
     exit 1
     ;;
 esac
 
 chmod 777 backtrace
-cp backtrace /usr/bin/backtrace
+mv backtrace /usr/bin/backtrace
+echo "Installation completed. You can now use 'backtrace' command."
