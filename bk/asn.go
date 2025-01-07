@@ -660,22 +660,55 @@ func isConvergenceLayer(hops []net.IP) (bool, int) {
 
 func useNextTrace(ip string) ([]net.IP, error) {
 	// 检查 NextTrace 是否安装
-	cmd := exec.Command("which", "nexttrace")
-	if err := cmd.Run(); err != nil {
+	whichCmd := exec.Command("which", "nexttrace")
+	if err := whichCmd.Run(); err != nil {
 		// NextTrace 未安装，尝试使用官方安装脚本
 		fmt.Println("NextTrace 未安装，正在尝试自动安装...")
-		installCmd := exec.Command("bash", "-c", "curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh | bash")
+
+		// 检查是否有 root/sudo 权限
+		checkRoot := exec.Command("id", "-u")
+		output, err := checkRoot.Output()
+		if err != nil {
+			return nil, fmt.Errorf("检查权限失败: %v", err)
+		}
+
+		isRoot := strings.TrimSpace(string(output)) == "0"
+		var installCmd *exec.Cmd
+		if isRoot {
+			installCmd = exec.Command("bash", "-c", "curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh | bash")
+		} else {
+			installCmd = exec.Command("sudo", "bash", "-c", "curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh | bash")
+		}
+
 		if output, err := installCmd.CombinedOutput(); err != nil {
 			return nil, fmt.Errorf("安装 NextTrace 失败: %v\n%s", err, output)
+		}
+
+		// 验证安装是否成功
+		if err := exec.Command("which", "nexttrace").Run(); err != nil {
+			return nil, fmt.Errorf("NextTrace 安装失败，未找到可执行文件")
 		}
 		fmt.Println("NextTrace 安装成功！")
 	}
 
 	// 执行 NextTrace，使用更多参数以获得更好的结果
-	cmd = exec.Command("nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
-	output, err := cmd.CombinedOutput()
+	var traceCmd *exec.Cmd
+	checkRoot := exec.Command("id", "-u")
+	output, err := checkRoot.Output()
 	if err != nil {
-		return nil, fmt.Errorf("执行 NextTrace 失败: %v", err)
+		return nil, fmt.Errorf("检查权限失败: %v", err)
+	}
+
+	isRoot := strings.TrimSpace(string(output)) == "0"
+	if isRoot {
+		traceCmd = exec.Command("nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
+	} else {
+		traceCmd = exec.Command("sudo", "nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
+	}
+
+	output, err = traceCmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("执行 NextTrace 失败: %v\n%s", err, output)
 	}
 
 	// 解析输出
