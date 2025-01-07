@@ -347,11 +347,41 @@ func trace(ch chan Result, i int) {
 
 	seenASNs := make(map[string]bool)
 	hasValidHop := false
+	isReturnPath := false // 是否是回程路由
 
 	// 检查汇聚层
 	hasConvergence, convergenceIndex := isConvergenceLayer(hops)
 	if hasConvergence {
 		hops = hops[:convergenceIndex+1] // 只保留汇聚层之前的跳点
+	}
+
+	// 检查第一个有效跳点的 ASN
+	var firstASN string
+	for _, hopIP := range hops {
+		if hopIP == nil || isPrivateIP(hopIP.String()) {
+			continue
+		}
+		if asnInfo, err := getASNInfo(hopIP.String()); err == nil {
+			firstASN = asnInfo.Number
+			break
+		}
+	}
+
+	// 检查最后一个有效跳点的 ASN
+	var lastASN string
+	for i := len(hops) - 1; i >= 0; i-- {
+		if hops[i] == nil || isPrivateIP(hops[i].String()) {
+			continue
+		}
+		if asnInfo, err := getASNInfo(hops[i].String()); err == nil {
+			lastASN = asnInfo.Number
+			break
+		}
+	}
+
+	// 判断是否是回程路由
+	if firstASN != "" && lastASN != "" && firstASN == lastASN {
+		isReturnPath = true
 	}
 
 	for _, hopIP := range hops {
@@ -383,7 +413,14 @@ func trace(ch chan Result, i int) {
 			tempText += colorFunc(fmt.Sprintf("%s ", asnInfo.Name))
 
 			// 显示描述信息
-			tempText += colorFunc(asnInfo.Description) + " "
+			tempText += colorFunc(asnInfo.Description)
+
+			// 如果是回程路由，添加标记
+			if isReturnPath {
+				tempText += colorFunc(" [回程]")
+			}
+
+			tempText += " "
 		}
 	}
 
@@ -569,6 +606,17 @@ func ipAsn(ip string) string {
 		strings.HasPrefix(ip, "223.120.6.") ||
 		strings.HasPrefix(ip, "223.120.7."):
 		return "58807" // CMIN2
+
+	// 移动 CMI 特征IP
+	case strings.HasPrefix(ip, "223.118.") ||
+		strings.HasPrefix(ip, "223.119.") ||
+		strings.HasPrefix(ip, "223.120.") ||
+		strings.HasPrefix(ip, "223.121.") ||
+		strings.HasPrefix(ip, "223.122.") ||
+		strings.HasPrefix(ip, "223.123.") ||
+		strings.HasPrefix(ip, "219.141.140.") || // 添加这个特征IP
+		strings.HasPrefix(ip, "219.141.147."):
+		return "9808" // 移动 CMI
 	}
 
 	// 再检查普通线路
@@ -604,15 +652,6 @@ func ipAsn(ip string) string {
 		strings.HasPrefix(prefix, "125.33") ||
 		strings.HasPrefix(prefix, "125.34"):
 		return "4837"
-
-	// 移动CMI
-	case strings.HasPrefix(prefix, "223.118") ||
-		strings.HasPrefix(prefix, "223.119") ||
-		strings.HasPrefix(prefix, "223.120") ||
-		strings.HasPrefix(prefix, "223.121") ||
-		strings.HasPrefix(prefix, "223.122") ||
-		strings.HasPrefix(prefix, "223.123"):
-		return "58453"
 
 	// 移动普通网络
 	case strings.HasPrefix(prefix, "211.136") ||
