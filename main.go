@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	version   = "dev"
+	version   = backtrace.BackTraceVersion
 	buildTime = "unknown"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	flag.BoolVar(&showVersion, "v", false, "Show version")
 	flag.BoolVar(&showHelp, "h", false, "Show help information")
 	flag.BoolVar(&enableLog, "e", false, "Enable logging")
-	flag.BoolVar(&showIP, "s", true, "Disabe show ip info")
+	flag.BoolVar(&showIP, "s", true, "Show IP information (default: true)")
 	flag.Parse()
 
 	if showHelp {
@@ -35,6 +35,10 @@ func main() {
 	if showVersion {
 		fmt.Printf("Version: %s\nBuild Time: %s\n", version, buildTime)
 		return
+	}
+
+	if enableLog {
+		backtrace.InitLogger()
 	}
 
 	backtrace.BackTrace()

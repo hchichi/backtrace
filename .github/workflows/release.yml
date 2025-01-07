@@ -30,18 +30,6 @@ jobs:
           echo "Go env:"
           go env
           
-      - name: Clone NTrace-core
-        run: |
-          echo "Cloning NTrace-core..."
-          cd ..
-          git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
-          echo "NTrace-core directory contents:"
-          ls -la NTrace-core
-          cd backtrace
-          go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
-          echo "Updated go.mod contents:"
-          cat go.mod
-          
       - name: Download dependencies
         run: |
           echo "Downloading dependencies..."
@@ -95,18 +83,6 @@ jobs:
           go version
           echo "Go env:"
           go env
-          
-      - name: Clone NTrace-core
-        run: |
-          echo "Cloning NTrace-core..."
-          cd ..
-          git clone --depth 1 https://github.com/nxtrace/NTrace-core.git
-          echo "NTrace-core directory contents:"
-          ls -la NTrace-core
-          cd backtrace
-          go mod edit -replace github.com/nxtrace/NTrace-core=../NTrace-core
-          echo "Updated go.mod contents:"
-          cat go.mod
           
       - name: Download dependencies
         run: |
