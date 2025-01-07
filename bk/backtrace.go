@@ -3,8 +3,6 @@ package backtrace
 import (
 	"fmt"
 	"time"
-
-	. "github.com/oneclickvirt/defaultset"
 )
 
 func BackTrace() {

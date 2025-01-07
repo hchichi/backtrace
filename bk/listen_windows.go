@@ -6,7 +6,6 @@ package backtrace
 import (
 	"net"
 
-	. "github.com/oneclickvirt/defaultset"
 	"golang.org/x/sys/windows"
 )
 

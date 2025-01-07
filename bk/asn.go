@@ -15,8 +15,6 @@ import (
 
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
-
-	. "github.com/oneclickvirt/defaultset"
 )
 
 type Result struct {

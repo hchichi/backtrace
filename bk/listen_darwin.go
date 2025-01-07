@@ -3,8 +3,6 @@ package backtrace
 import (
 	"net"
 	"syscall"
-
-	. "github.com/oneclickvirt/defaultset"
 )
 
 func (t *Tracer) listen(network string, laddr *net.IPAddr) (*net.IPConn, error) {
