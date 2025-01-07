@@ -131,7 +131,8 @@ jobs:
             VERSION=$(git describe --tags --always)
           fi
           echo "Building version: $VERSION"
-          LDFLAGS="-s -w -X main.version=$VERSION -X main.buildTime=$(date -u '+%Y-%m-%d %H:%M:%S')"
+          BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S')
+          echo "Build time: $BUILD_TIME"
           
           # 确保编译时包含所有依赖
           for os in linux darwin windows; do
@@ -147,11 +148,16 @@ jobs:
               export CGO_ENABLED=0
               
               if [ "$os" = "windows" ]; then
-                echo "go build -v -ldflags=\"$LDFLAGS\" -o \"dist/backtrace-${os}-${arch}.exe\""
-                go build -v -ldflags="$LDFLAGS" -o "dist/backtrace-${os}-${arch}.exe"
+                echo "Building Windows binary..."
+                go build -v -trimpath -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.buildTime=${BUILD_TIME}'" -o "dist/backtrace-${os}-${arch}.exe"
               else
-                echo "go build -v -ldflags=\"$LDFLAGS\" -o \"dist/backtrace-${os}-${arch}\""
-                go build -v -ldflags="$LDFLAGS" -o "dist/backtrace-${os}-${arch}"
+                echo "Building Unix binary..."
+                go build -v -trimpath -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.buildTime=${BUILD_TIME}'" -o "dist/backtrace-${os}-${arch}"
+              fi
+              
+              if [ $? -ne 0 ]; then
+                echo "Build failed for $os/$arch"
+                exit 1
               fi
             done
           done
