@@ -18,8 +18,9 @@ import (
 )
 
 type Result struct {
-	i int
-	s string
+	i   int
+	s   string
+	err error
 }
 
 var (
@@ -330,10 +331,14 @@ func trace(ch chan Result, i int) {
 		// 如果 NextTrace 失败，使用本地实现
 		hops, err = TraceRoute(net.ParseIP(ips[i]))
 		if err != nil {
-			s := fmt.Sprintf("%v %-15s %v", names[i], ips[i], err)
-			ch <- Result{i, s}
+			ch <- Result{i, "", fmt.Errorf("路由跟踪失败: %v", err)}
 			return
 		}
+	}
+
+	if len(hops) == 0 {
+		ch <- Result{i, "", fmt.Errorf("未获取到任何路由跳点")}
+		return
 	}
 
 	var tempText string
@@ -354,10 +359,17 @@ func trace(ch chan Result, i int) {
 			continue
 		}
 
+		// 跳过私有 IP
+		if isPrivateIP(hopIP.String()) {
+			continue
+		}
+
 		hasValidHop = true
 		asnInfo, err := getASNInfo(hopIP.String())
 		if err != nil {
-			fmt.Printf("Debug: Error getting ASN info for IP %s: %v\n", hopIP.String(), err)
+			if EnableLoger {
+				fmt.Printf("Debug: Error getting ASN info for IP %s: %v\n", hopIP.String(), err)
+			}
 			continue
 		}
 
@@ -376,12 +388,16 @@ func trace(ch chan Result, i int) {
 	}
 
 	if !hasValidHop {
-		tempText += Red("无法获取路由跳点")
-	} else if len(seenASNs) == 0 {
-		tempText += Red("检测不到已知线路的ASN")
+		ch <- Result{i, "", fmt.Errorf("无法获取有效的路由跳点")}
+		return
 	}
 
-	ch <- Result{i, tempText}
+	if len(seenASNs) == 0 {
+		ch <- Result{i, "", fmt.Errorf("检测不到已知线路的ASN")}
+		return
+	}
+
+	ch <- Result{i, tempText, nil}
 }
 
 func TraceRoute(ip net.IP) ([]net.IP, error) {
@@ -460,59 +476,52 @@ func TraceRoute(ip net.IP) ([]net.IP, error) {
 }
 
 func classifyASN(asn string) *ASNInfo {
-	info := &ASNInfo{Number: asn}
+	info := &ASNInfo{
+		Number: asn,
+	}
 
-	// 移除可能的 "AS" 前缀
-	asn = strings.TrimPrefix(asn, "AS")
+	switch {
+	// 精品线路判断
+	case asn == "23764": // CTGNet
+		info.Name = "电信CTGNet"
+		info.Description = "[精品线路]"
+	case asn == "58807": // CMIN2
+		info.Name = "移动CMIN2"
+		info.Description = "[精品线路]"
+	case asn == "4809" && strings.Contains(info.Whois, "GIA"): // CN2 GIA
+		info.Name = "电信CN2GIA"
+		info.Description = "[精品线路]"
 
-	switch asn {
-	case "23764":
-		info.Name = "AS23764"
-		info.Description = "电信CTGNet [精品线路]"
-	case "4809":
-		if isGIA(asn) {
-			info.Name = "AS4809"
-			info.Description = "电信CN2GIA [精品线路]"
-		} else {
-			info.Name = "AS4809"
-			info.Description = "电信CN2GT [优质线路]"
-		}
-	case "4134":
-		info.Name = "AS4134"
-		info.Description = "电信163 [普通线路]"
-	case "10099":
-		info.Name = "AS10099"
-		info.Description = "联通CUG [优质线路]"
-	case "9929":
-		info.Name = "AS9929"
-		info.Description = "联通9929 [优质线路]"
-	case "4837":
-		info.Name = "AS4837"
-		info.Description = "联通4837 [普通线路]"
-	case "58807":
-		info.Name = "AS58807"
-		info.Description = "移动CMIN2 [精品线路]"
-	case "9808":
-		info.Name = "AS9808"
-		info.Description = "移动CMI [优质线路]"
-	case "58453":
-		info.Name = "AS58453"
-		info.Description = "移动CMI [普通线路]"
+	// 优质线路判断
+	case asn == "9808": // 移动 CMI
+		info.Name = "移动CMI"
+		info.Description = "[优质线路]"
+	case asn == "9929": // 联通 9929
+		info.Name = "联通9929"
+		info.Description = "[优质线路]"
+	case asn == "4809": // CN2 GT
+		info.Name = "电信CN2GT"
+		info.Description = "[优质线路]"
+	case asn == "10099": // 联通 CUG
+		info.Name = "联通CUG"
+		info.Description = "[优质线路]"
+
+	// 普通线路判断
+	case asn == "4134": // 电信 163
+		info.Name = "电信163"
+		info.Description = "[普通线路]"
+	case asn == "4837": // 联通 4837
+		info.Name = "联通4837"
+		info.Description = "[普通线路]"
+	case asn == "4538": // 中国教育网
+		info.Name = "教育网CERNET"
+		info.Description = "[普通线路]"
 	default:
 		info.Name = fmt.Sprintf("AS%s", asn)
-		info.Description = "未知线路"
+		info.Description = "[未知线路]"
 	}
 
 	return info
-}
-
-func isGIA(asn string) bool {
-	// 实现具体判断逻辑
-	// 1. 检查IP特征(59.43.80.*)
-	// 2. 检查路由表中是否包含AS4134
-	// 3. 检查是否有GIA特征的Whois信息
-	// 4. 检查是否有独立的C-I段
-	return false // 默认返回false，需要具体IP特征判断
 }
 
 func ipAsn(ip string) string {
@@ -663,7 +672,9 @@ func useNextTrace(ip string) ([]net.IP, error) {
 	whichCmd := exec.Command("which", "nexttrace")
 	if err := whichCmd.Run(); err != nil {
 		// NextTrace 未安装，尝试使用官方安装脚本
-		fmt.Println("NextTrace 未安装，正在尝试自动安装...")
+		if EnableLoger {
+			fmt.Println("NextTrace 未安装，正在尝试自动安装...")
+		}
 
 		// 检查是否有 root/sudo 权限
 		checkRoot := exec.Command("id", "-u")
@@ -688,7 +699,9 @@ func useNextTrace(ip string) ([]net.IP, error) {
 		if err := exec.Command("which", "nexttrace").Run(); err != nil {
 			return nil, fmt.Errorf("NextTrace 安装失败，未找到可执行文件")
 		}
-		fmt.Println("NextTrace 安装成功！")
+		if EnableLoger {
+			fmt.Println("NextTrace 安装成功！")
+		}
 	}
 
 	// 执行 NextTrace，使用更多参数以获得更好的结果
@@ -701,23 +714,33 @@ func useNextTrace(ip string) ([]net.IP, error) {
 
 	isRoot := strings.TrimSpace(string(output)) == "0"
 	if isRoot {
-		traceCmd = exec.Command("nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
+		traceCmd = exec.Command("nexttrace", "-M", "icmp", "-q", "1", "-n", "1", "-T", "2", ip)
 	} else {
-		traceCmd = exec.Command("sudo", "nexttrace", "-q", "1", "-n", "1", "-M", "icmp", "-T", "2", "-r", ip)
+		traceCmd = exec.Command("sudo", "nexttrace", "-M", "icmp", "-q", "1", "-n", "1", "-T", "2", ip)
 	}
 
 	output, err = traceCmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("执行 NextTrace 失败: %v\n%s", err, output)
+		if EnableLoger {
+			fmt.Printf("Debug: NextTrace 执行失败: %v\n%s\n", err, output)
+		}
+		return nil, fmt.Errorf("执行 NextTrace 失败: %v", err)
 	}
 
 	// 解析输出
 	var hops []net.IP
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
+		// 跳过不包含 IP 地址的行
+		if !strings.Contains(line, "AS") {
+			continue
+		}
+
 		// 解析每一行，提取 IP 地址
-		if ip := extractIP(line); ip != nil {
-			hops = append(hops, ip)
+		if ip := extractIPFromNextTrace(line); ip != nil {
+			if !isPrivateIP(ip.String()) {
+				hops = append(hops, ip)
+			}
 		}
 	}
 
@@ -728,13 +751,27 @@ func useNextTrace(ip string) ([]net.IP, error) {
 	return hops, nil
 }
 
-func extractIP(line string) net.IP {
-	// 使用正则表达式匹配 IP 地址
+func extractIPFromNextTrace(line string) net.IP {
+	// NextTrace 输出格式：序号 IP地址 AS信息 地理位置信息
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return nil
+	}
+
+	// 第二个字段通常是 IP 地址
+	ipStr := fields[1]
+	if ip := net.ParseIP(ipStr); ip != nil {
+		return ip
+	}
+
+	// 如果第二个字段不是 IP，尝试在整行中查找 IP
 	re := regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
 	matches := re.FindAllString(line, -1)
 	if len(matches) > 0 {
-		// 返回最后一个匹配的 IP 地址，因为通常是目标 IP
-		return net.ParseIP(matches[len(matches)-1])
+		if ip := net.ParseIP(matches[0]); ip != nil {
+			return ip
+		}
 	}
+
 	return nil
 }
