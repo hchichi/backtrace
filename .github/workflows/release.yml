@@ -55,8 +55,6 @@ jobs:
           go list -m all
           
       - name: Run Tests
-        env:
-          CI: true
         run: |
           echo "Running tests..."
           go test -v ./... -coverprofile=coverage.txt
@@ -125,8 +123,6 @@ jobs:
           go list -m all
           
       - name: Build
-        env:
-          CI: true
         run: |
           echo "Starting build process..."
           mkdir -p dist

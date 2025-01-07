@@ -1,4 +1,4 @@
-module github.com/oneclickvirt/backtrace
+module github.com/ilychi/backtrace
 
 go 1.22.4
 

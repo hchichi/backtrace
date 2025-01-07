@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	backtrace "github.com/oneclickvirt/backtrace/bk"
+	backtrace "github.com/ilychi/backtrace/bk"
 )
 
 var (
