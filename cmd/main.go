@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"time"
 
 	"github.com/fatih/color"
 	backtrace "github.com/oneclickvirt/backtrace/bk"
@@ -43,20 +42,12 @@ func updateNexttrace() error {
 	return cmd.Run()
 }
 
-func runNexttrace(ip string) error {
-	cmd := exec.Command("nexttrace", "-q", "1", "--raw", ip)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
 func main() {
-	var showVersion, showIpInfo, help, forceLocal bool
+	var showVersion, showIpInfo, help bool
 	backtraceFlag := flag.NewFlagSet("backtrace", flag.ContinueOnError)
 	backtraceFlag.BoolVar(&help, "h", false, "显示帮助信息")
 	backtraceFlag.BoolVar(&showVersion, "v", false, "显示版本信息")
 	backtraceFlag.BoolVar(&showIpInfo, "s", true, "禁用显示IP信息")
-	backtraceFlag.BoolVar(&forceLocal, "l", false, "强制使用本地检测")
 	backtraceFlag.BoolVar(&backtrace.EnableLoger, "e", false, "启用日志")
 	backtraceFlag.Parse(os.Args[1:])
 
@@ -71,26 +62,7 @@ func main() {
 		return
 	}
 
-	// 检查并安装/更新nexttrace
-	if !forceLocal {
-		if !checkNexttraceInstalled() {
-			if err := installNexttrace(); err != nil {
-				fmt.Println(color.RedString("nexttrace 安装失败，将使用备用方案"))
-				forceLocal = true
-			} else {
-				fmt.Println(color.GreenString("nexttrace 安装成功"))
-				// 安装成功后更新数据库
-				if err := updateNexttrace(); err != nil {
-					fmt.Println(color.YellowString("nexttrace 数据库更新失败，将使用现有数据库"))
-				}
-			}
-		} else {
-			// 已安装则尝试更新
-			if err := updateNexttrace(); err != nil {
-				fmt.Println(color.YellowString("nexttrace 更新失败，将使用现有版本"))
-			}
-		}
-	}
+	fmt.Println("项目地址: https://github.com/ilychi/backtrace")
 
 	if showIpInfo {
 		rsp, err := http.Get("http://ipinfo.io")
@@ -110,33 +82,20 @@ func main() {
 		}
 	}
 
-	// 优先使用nexttrace
-	if !forceLocal && checkNexttraceInstalled() {
-		fmt.Println(color.YellowString("使用 nexttrace 进行路由检测..."))
-		failed := false
-		for i, ip := range backtrace.GetTestIPs() {
-			if err := runNexttrace(ip); err != nil {
-				fmt.Printf(color.RedString("nexttrace 检测失败，切换到备用方案\n"))
-				failed = true
-				break
-			}
-			if i < len(backtrace.GetTestIPs())-1 {
-				fmt.Println(color.YellowString("---"))
-				time.Sleep(time.Second) // 避免请求过快
-			}
-		}
-		if failed {
-			backtrace.BackTrace()
+	// 检查并安装/更新nexttrace
+	if !checkNexttraceInstalled() {
+		if err := installNexttrace(); err != nil {
+			fmt.Println(color.RedString("nexttrace 安装失败，请手动安装"))
+			return
 		}
 	} else {
-		if forceLocal {
-			fmt.Println(color.YellowString("使用本地方案进行路由检测..."))
+		if err := updateNexttrace(); err != nil {
+			fmt.Println(color.YellowString("nexttrace 更新失败，将使用现有版本"))
 		}
-		backtrace.BackTrace()
 	}
 
-	fmt.Println(color.YellowString("准确线路请自行查看详细路由，本测试结果仅作参考"))
-	fmt.Println(color.YellowString("同一目标地址多个线路时，可能检测已越过汇聚层，除了第一个线路外，后续信息可能无效"))
+	// 执行路由检测
+	backtrace.BackTrace()
 
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		fmt.Println("按回车键退出...")
