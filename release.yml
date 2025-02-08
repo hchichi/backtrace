@@ -1,0 +1,181 @@
+name: CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test and Tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          check-latest: true
+          
+      - name: Debug Info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Go version:"
+          go version
+          echo "Go env:"
+          go env
+          
+      - name: Download dependencies
+        run: |
+          echo "Downloading dependencies..."
+          go mod download
+          go mod tidy
+          echo "Final go.mod contents:"
+          cat go.mod
+          echo "Dependency tree:"
+          go list -m all
+          
+      - name: Run Tests
+        run: |
+          echo "Running tests..."
+          go test -v ./... -coverprofile=coverage.txt
+        
+      - name: Create Auto Tag
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          MAJOR=$(echo $LAST_TAG | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo $LAST_TAG | cut -d. -f2)
+          PATCH=$(echo $LAST_TAG | cut -d. -f3 | cut -d- -f1)
+          NEW_TAG="v$MAJOR.$MINOR.$((PATCH + 1))-$(date +'%Y%m%d%H%M%S')"
+          echo "Creating new tag: $NEW_TAG"
+          git tag $NEW_TAG
+          git push origin $NEW_TAG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+  release:
+    name: Build and Release
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          check-latest: true
+          
+      - name: Debug Info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Go version:"
+          go version
+          echo "Go env:"
+          go env
+          
+      - name: Download dependencies
+        run: |
+          echo "Downloading dependencies..."
+          go mod download
+          go mod tidy
+          echo "Final go.mod contents:"
+          cat go.mod
+          echo "Dependency tree:"
+          go list -m all
+          
+      - name: Build
+        run: |
+          echo "Starting build process..."
+          mkdir -p dist
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$VERSION" = "" ] || [ "$VERSION" = "refs/heads/main" ]; then
+            VERSION=$(git describe --tags --always)
+          fi
+          echo "Building version: $VERSION"
+          BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S')
+          echo "Build time: $BUILD_TIME"
+          
+          # 构建目标平台
+          PLATFORMS=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64")
+          
+          for platform in "${PLATFORMS[@]}"; do
+            OS=${platform%/*}
+            ARCH=${platform#*/}
+            
+            echo "Building for $OS/$ARCH..."
+            export GOOS=$OS
+            export GOARCH=$ARCH
+            export CGO_ENABLED=0
+            
+            OUTPUT="dist/backtrace-${OS}-${ARCH}"
+            if [ "$OS" = "windows" ]; then
+              OUTPUT="${OUTPUT}.exe"
+            fi
+            
+            echo "Building binary: $OUTPUT"
+            go build -v -trimpath \
+              -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.buildTime=${BUILD_TIME}'" \
+              -o "$OUTPUT"
+            
+            if [ $? -ne 0 ]; then
+              echo "Build failed for $OS/$ARCH"
+              exit 1
+            fi
+          done
+          
+          echo "Build outputs:"
+          ls -la dist/
+          
+          # 设置执行权限
+          chmod +x dist/backtrace-*
+        shell: /usr/bin/bash -e {0}
+          
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          echo "Generated checksums:"
+          cat checksums.txt
+          
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          artifacts: "dist/*"
+          draft: false
+          prerelease: false
+          generateReleaseNotes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Update Latest Release
+        if: github.ref == 'refs/heads/main'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*"
+          tag: latest
+          name: Latest Build
+          body: |
+            Latest build from main branch
+            Built on ${{ github.event.head_commit.timestamp }}
+            Version: ${{ github.sha }}
+          draft: false
+          prerelease: false
+          allowUpdates: true
+          replacesArtifacts: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
