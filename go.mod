@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/fatih/color v1.18.0
-	github.com/nxtrace/NTrace-core v0.0.0
+	github.com/nxtrace/NTrace-core v0.1.4
 	github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5
 	golang.org/x/net v0.34.0
 	golang.org/x/sys v0.29.0
@@ -44,5 +44,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/nxtrace/NTrace-core => ../NTrace-core-main
