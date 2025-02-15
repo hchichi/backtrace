@@ -3,14 +3,15 @@ package backtrace
 import (
 	"context"
 	"errors"
-	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 	"net"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 // DefaultConfig is the default configuration for Tracer.

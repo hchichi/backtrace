@@ -1,13 +1,11 @@
 package backtrace
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
-	"os/exec"
 	"strings"
 
-	"github.com/fatih/color"
+	. "github.com/oneclickvirt/defaultset"
 )
 
 type Result struct {
@@ -15,16 +13,9 @@ type Result struct {
 	s string
 }
 
-type ASNInfo struct {
-	ASN         string `json:"asn"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	Route       string `json:"route"`      // 路由信息
-	BackboneIP  string `json:"backboneIP"` // 骨干网IP
-}
-
 var (
 	ips = []string{
+		// "219.141.136.12", "202.106.50.1",
 		"219.141.140.10", "202.106.195.68", "221.179.155.161",
 		"202.96.209.133", "210.22.97.1", "211.136.112.200",
 		"58.60.188.222", "210.21.196.6", "120.196.165.24",
@@ -36,37 +27,31 @@ var (
 		"广州电信", "广州联通", "广州移动",
 		"成都电信", "成都联通", "成都移动",
 	}
-	// 线路类型映射
-	lineTypes = map[string]string{
-		"CTG":    "电信CTGNet [精品线路]", // CTG是电信的国际业务品牌
-		"CN2GIA": "电信CN2GIA [精品线路]",
-		"CN2GT":  "电信CN2GT  [普通线路]",
-		"163":    "电信163    [普通线路]",
-		"9929":   "联通9929   [优质线路]",
-		"4837":   "联通4837   [普通线路]",
-		"CUII":   "联通CUII   [精品线路]",
-		"CMIN2":  "移动CMIN2  [精品线路]",
-		"CMI":    "移动CMI    [普通线路]",
+	m = map[string]string{
+		// [] 前的字符串个数，中文占2个字符串
+		"AS4809a": "电信CN2GIA [精品线路]",
+		"AS4809b": "电信CN2GT  [优质线路]",
+		"AS4134":  "电信163    [普通线路]",
+		"AS9929":  "联通9929   [优质线路]",
+		"AS4837":  "联通4837   [普通线路]",
+		"AS58807": "移动CMIN2  [精品线路]",
+		"AS9808":  "移动CMI    [普通线路]",
+		"AS58453": "移动CMI    [普通线路]",
 	}
 )
 
-// GetTestIPs 返回测试用的IP列表
-func GetTestIPs() []string {
-	return ips
-}
-
-func removeDuplicates(elements []ASNInfo) []ASNInfo {
-	encountered := make(map[string]bool)
-	result := []ASNInfo{}
-
-	for _, element := range elements {
-		if encountered[element.ASN] {
-			continue
+func removeDuplicates(elements []string) []string {
+	encountered := map[string]bool{} // 用于存储已经遇到的元素
+	result := []string{}             // 存储去重后的结果
+	for v := range elements {        // 遍历切片中的元素
+		if encountered[elements[v]] == true { // 如果该元素已经遇到过
+			// 存在过就不加入了
+		} else {
+			encountered[elements[v]] = true      // 将该元素标记为已经遇到
+			result = append(result, elements[v]) // 将该元素加入到结果切片中
 		}
-		encountered[element.ASN] = true
-		result = append(result, element)
 	}
-	return result
+	return result // 返回去重后的结果切片
 }
 
 func trace(ch chan Result, i int) {
@@ -76,151 +61,94 @@ func trace(ch chan Result, i int) {
 		ch <- Result{i, s}
 		return
 	}
-
-	var asnInfos []ASNInfo
-	lastValidHop := -1
-
-	// 遍历所有hop
-	for j, h := range hops {
-		hasValidNode := false
+	var asns []string
+	for _, h := range hops {
 		for _, n := range h.Nodes {
-			info, err := getASNInfo(n.IP.String())
-			if err != nil || info == nil {
-				continue
-			}
-
-			hasValidNode = true
-			asnInfos = append(asnInfos, *info)
-
-			// 如果是主要运营商的ASN,更新lastValidHop
-			if isMainCarrierASN(info.ASN) {
-				lastValidHop = j
+			asn := ipAsn(n.IP.String())
+			if asn != "" {
+				asns = append(asns, asn)
 			}
 		}
-		if hasValidNode && lastValidHop == -1 {
-			lastValidHop = j
-		}
 	}
-
-	// 只处理到最后一个有效hop的路由信息
-	if lastValidHop >= 0 {
-		asnInfos = asnInfos[:lastValidHop+1]
-	}
-
-	if len(asnInfos) > 0 {
+	// 处理CN2不同路线的区别
+	if asns != nil && len(asns) > 0 {
 		var tempText string
-		asnInfos = removeDuplicates(asnInfos)
+		asns = removeDuplicates(asns)
 		tempText += fmt.Sprintf("%v ", names[i])
+		hasAS4134 := false
+		hasAS4809 := false
+		for _, asn := range asns {
+			if asn == "AS4134" {
+				hasAS4134 = true
+			}
+			if asn == "AS4809" {
+				hasAS4809 = true
+			}
+		}
+		// 判断是否包含 AS4134 和 AS4809
+		if hasAS4134 && hasAS4809 {
+			// 同时包含 AS4134 和 AS4809 属于 CN2GT
+			asns = append([]string{"AS4809b"}, asns...)
+		} else if hasAS4809 {
+			// 仅包含 AS4809 属于 CN2GIA
+			asns = append([]string{"AS4809a"}, asns...)
+		}
 		tempText += fmt.Sprintf("%-15s ", ips[i])
-
-		for _, info := range asnInfos {
-			lineType := getLineType(info)
-			if lineType != "" {
-				switch {
-				case strings.Contains(lineType, "精品线路"):
-					tempText += color.New(color.FgHiYellow, color.Bold).Sprintf("%s ", lineType)
-				case strings.Contains(lineType, "优质线路"):
-					tempText += color.New(color.FgHiGreen, color.Bold).Sprintf("%s ", lineType)
-				default:
-					tempText += color.New(color.FgWhite, color.Bold).Sprintf("%s ", lineType)
+		for _, asn := range asns {
+			asnDescription := m[asn]
+			switch asn {
+			case "":
+				continue
+			case "AS4809": // 被 AS4809a 和 AS4809b 替代了
+				continue
+			case "AS9929":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += DarkGreen(asnDescription) + " "
+				}
+			case "AS4809a":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += DarkGreen(asnDescription) + " "
+				}
+			case "AS4809b":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += Green(asnDescription) + " "
+				}
+			case "AS58807":
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += Green(asnDescription) + " "
+				}
+			default:
+				if !strings.Contains(tempText, asnDescription) {
+					tempText += White(asnDescription) + " "
 				}
 			}
 		}
-
 		if tempText == (fmt.Sprintf("%v ", names[i]) + fmt.Sprintf("%-15s ", ips[i])) {
-			tempText += fmt.Sprintf("%v", color.New(color.FgRed, color.Bold).Sprintf("检测不到已知线路的ASN"))
+			tempText += fmt.Sprintf("%v", Red("检测不到已知线路的ASN"))
 		}
 		ch <- Result{i, tempText}
 	} else {
-		s := fmt.Sprintf("%v %-15s %v", names[i], ips[i], color.New(color.FgRed, color.Bold).Sprintf("检测不到回程路由节点的IP地址"))
+		s := fmt.Sprintf("%v %-15s %v", names[i], ips[i], Red("检测不到回程路由节点的IP地址"))
 		ch <- Result{i, s}
 	}
 }
 
-// getASNInfo 使用nexttrace的ASN数据库获取ASN信息
-func getASNInfo(ip string) (*ASNInfo, error) {
-	cmd := exec.Command("nexttrace", "-q", "1", "--query", ip)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	var info ASNInfo
-	if err := json.Unmarshal(output, &info); err != nil {
-		return nil, err
-	}
-
-	return &info, nil
-}
-
-// isMainCarrierASN 判断是否为主要运营商ASN
-func isMainCarrierASN(asn string) bool {
-	// 按运营商分组的ASN列表
-	telecomASNs := []string{
-		"AS23764", // 电信CTGNet
-		"AS4809",  // 电信CN2
-		"AS4134",  // 电信163
-	}
-	unicomASNs := []string{
-		"AS9929",  // 联通9929
-		"AS4837",  // 联通4837
-		"AS10099", // 联通CUII
-	}
-	mobileASNs := []string{
-		"AS58807", // 移动CMIN2
-		"AS9808",  // 移动CMI
-		"AS58453", // 移动CMI
-	}
-
-	// 检查是否属于任一运营商
-	for _, asNum := range telecomASNs {
-		if asn == asNum {
-			return true
-		}
-	}
-	for _, asNum := range unicomASNs {
-		if asn == asNum {
-			return true
-		}
-	}
-	for _, asNum := range mobileASNs {
-		if asn == asNum {
-			return true
-		}
-	}
-	return false
-}
-
-// getLineType 根据ASN信息判断线路类型
-func getLineType(info ASNInfo) string {
-	asnNum := strings.TrimPrefix(info.ASN, "AS")
-	desc := strings.ToUpper(info.Description)
-
-	switch asnNum {
-	case "23764": // CTG是电信的国际业务品牌
-		return lineTypes["CTG"]
-	case "4809":
-		// 通过描述判断是GIA还是GT
-		if strings.Contains(desc, "GT") {
-			return lineTypes["CN2GT"]
-		}
-		if strings.Contains(desc, "GIA") {
-			return lineTypes["CN2GIA"]
-		}
-		// 默认为CN2GT
-		return lineTypes["CN2GT"]
-	case "4134":
-		return lineTypes["163"]
-	case "9929":
-		return lineTypes["9929"]
-	case "4837":
-		return lineTypes["4837"]
-	case "10099":
-		return lineTypes["CUII"]
-	case "58807":
-		return lineTypes["CMIN2"]
-	case "9808", "58453":
-		return lineTypes["CMI"]
+func ipAsn(ip string) string {
+	switch {
+	case strings.HasPrefix(ip, "59.43"):
+		return "AS4809"
+	case strings.HasPrefix(ip, "202.97"):
+		return "AS4134"
+	case strings.HasPrefix(ip, "218.105") || strings.HasPrefix(ip, "210.51"):
+		return "AS9929"
+	case strings.HasPrefix(ip, "219.158"):
+		return "AS4837"
+	case strings.HasPrefix(ip, "223.120.19") || strings.HasPrefix(ip, "223.120.17") || strings.HasPrefix(ip, "223.120.16") ||
+		strings.HasPrefix(ip, "223.120.140") || strings.HasPrefix(ip, "223.120.130") || strings.HasPrefix(ip, "223.120.131") ||
+		strings.HasPrefix(ip, "223.120.141"):
+		return "AS58807"
+	case strings.HasPrefix(ip, "223.118") || strings.HasPrefix(ip, "223.119") || strings.HasPrefix(ip, "223.120") || strings.HasPrefix(ip, "223.121"):
+		return "AS58453"
 	default:
 		return ""
 	}

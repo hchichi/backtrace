@@ -1,22 +1,6 @@
 #!/bin/bash
-#From https://github.com/ilychi/backtrace
-#2024.01.07
-
-# 安装 NextTrace
-install_nexttrace() {
-  echo "正在安装 NextTrace..."
-  bash <(curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh)
-  if ! command -v nexttrace &>/dev/null; then
-    echo "NextTrace 安装失败，请手动安装"
-    exit 1
-  fi
-  echo "NextTrace 安装成功"
-}
-
-# 检查 NextTrace 是否已安装
-if ! command -v nexttrace &>/dev/null; then
-  install_nexttrace
-fi
+#From https://github.com/oneclickvirt/backtrace
+#2024.07.02
 
 rm -rf /usr/bin/backtrace
 os=$(uname -s)
@@ -47,51 +31,79 @@ cdn_urls=("https://cdn0.spiritlhl.top/" "http://cdn3.spiritlhl.net/" "http://cdn
 check_cdn_file
 
 case $os in
-Linux)
-  case $arch in
-  "x86_64" | "x86" | "amd64" | "x64")
-    wget -O backtrace "${cdn_success_url}https://github.com/ilychi/backtrace/releases/download/latest/backtrace-linux-amd64"
+  Linux)
+    case $arch in
+      "x86_64" | "x86" | "amd64" | "x64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-linux-amd64"
+        ;;
+      "i386" | "i686")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-linux-386"
+        ;;
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-linux-arm64"
+        ;;
+      *)
+        echo "Unsupported architecture: $arch"
+        exit 1
+        ;;
+    esac
     ;;
-  "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-    wget -O backtrace "${cdn_success_url}https://github.com/ilychi/backtrace/releases/download/latest/backtrace-linux-arm64"
+  Darwin)
+    case $arch in
+      "x86_64" | "x86" | "amd64" | "x64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-darwin-amd64"
+        ;;
+      "i386" | "i686")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-darwin-386"
+        ;;
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-darwin-arm64"
+        ;;
+      *)
+        echo "Unsupported architecture: $arch"
+        exit 1
+        ;;
+    esac
+    ;;
+  FreeBSD)
+    case $arch in
+      amd64)
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-freebsd-amd64"
+        ;;
+      "i386" | "i686")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-freebsd-386"
+        ;;
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-freebsd-arm64"
+        ;;
+      *)
+        echo "Unsupported architecture: $arch"
+        exit 1
+        ;;
+    esac
+    ;;
+  OpenBSD)
+    case $arch in
+      amd64)
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-openbsd-amd64"
+        ;;
+      "i386" | "i686")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-openbsd-386"
+        ;;
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
+        wget -O backtrace "${cdn_success_url}https://github.com/oneclickvirt/backtrace/releases/download/output/backtrace-openbsd-arm64"
+        ;;
+      *)
+        echo "Unsupported architecture: $arch"
+        exit 1
+        ;;
+    esac
     ;;
   *)
-    echo "Unsupported architecture: $arch"
+    echo "Unsupported operating system: $os"
     exit 1
     ;;
-  esac
-  ;;
-Darwin)
-  case $arch in
-  "x86_64" | "x86" | "amd64" | "x64")
-    wget -O backtrace "${cdn_success_url}https://github.com/ilychi/backtrace/releases/download/latest/backtrace-darwin-amd64"
-    ;;
-  "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-    wget -O backtrace "${cdn_success_url}https://github.com/ilychi/backtrace/releases/download/latest/backtrace-darwin-arm64"
-    ;;
-  *)
-    echo "Unsupported architecture: $arch"
-    exit 1
-    ;;
-  esac
-  ;;
-*)
-  echo "This script only supports Linux and macOS systems"
-  exit 1
-  ;;
 esac
 
 chmod 777 backtrace
-mv backtrace /usr/bin/backtrace
-echo "Installation completed. You can now use 'backtrace' command."
-echo
-echo "Usage:"
-echo "  backtrace           - Run backtrace with default settings"
-echo "  backtrace -h       - Show help information"
-echo "  backtrace -v       - Show version information"
-echo "  backtrace -e       - Enable logging"
-echo "  backtrace -s=false - Disable IP information display"
-echo
-echo "Example:"
-echo "  backtrace          - Trace route to multiple destinations"
-echo "  backtrace -e       - Trace route with logging enabled"
+cp backtrace /usr/bin/backtrace
