@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/fatih/color v1.18.0
-	github.com/nxtrace/NTrace-core v0.1.4
+	github.com/nxtrace/NTrace-core v1.3.7
 	github.com/oneclickvirt/defaultset v0.0.0-20240624051018-30a50859e1b5
 	golang.org/x/net v0.34.0
 	golang.org/x/sys v0.29.0
